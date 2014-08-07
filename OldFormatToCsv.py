@@ -3,11 +3,6 @@
 import sys,csv,os,re
 from xlrd import open_workbook
 
-def remove_ptn(str,ptn_to_remove):
-    for ptn in ptn_to_remove:
-        str = str.replace(ptn,'')
-    return str
-
 class OldFormatToCsv:
 
     setting = {
@@ -63,6 +58,11 @@ class OldFormatToCsv:
 
     def __init__(self,input_setting = {}):
         self.setting.update(input_setting)
+
+    def remove_ptn(str,ptn_to_remove):
+        for ptn in ptn_to_remove:
+            str = str.replace(ptn,'')
+        return str
 
     def parseXls(xls_file):
         wb = open_workbook(xls_file)
@@ -163,9 +163,9 @@ class OldFormatToCsv:
 
         col_name = []
         multiField_k = []
-        multiField_match = [ remove_ptn(field,setting['xls_col2csv_col_preReplace']) for field in setting['multiField']]
+        multiField_match = [ OldFormatToCsv.remove_ptn(field,setting['xls_col2csv_col_preReplace']) for field in setting['multiField']]
         ignore_k = []
-        ignore_match = [ remove_ptn(field,setting['xls_col2csv_col_preReplace']) for field in setting['ignored_col']]
+        ignore_match = [ OldFormatToCsv.remove_ptn(field,setting['xls_col2csv_col_preReplace']) for field in setting['ignored_col']]
         k = 0
 
         for col in oldMeta['col_name']:
@@ -174,7 +174,7 @@ class OldFormatToCsv:
             for xls_col2csv_col in setting['xls_col2csv_col']:
                 col_reg_match = re.match(xls_col2csv_col[0],col_name_tmp)
                 if col_reg_match:
-                    col_match_name = remove_ptn(col_reg_match.group(1),setting['xls_col2csv_col_preReplace'])
+                    col_match_name = OldFormatToCsv.remove_ptn(col_reg_match.group(1),setting['xls_col2csv_col_preReplace'])
                     if col_match_name in ignore_match:
                         ignore_k.append(k)
                         break
@@ -191,11 +191,11 @@ class OldFormatToCsv:
 
         def oldDelimiter2New(cell):
             return setting["oldDelimiter2New"][1].join(
-                [remove_ptn(v,setting['pattern_to_remove']).strip() for v in cell.split(setting["oldDelimiter2New"][0])]
+                [OldFormatToCsv.remove_ptn(v,setting['pattern_to_remove']).strip() for v in cell.split(setting["oldDelimiter2New"][0])]
             )
 
         def cell_cleanup(cell):
-            return remove_ptn(cell,setting['pattern_to_remove']).strip()
+            return OldFormatToCsv.remove_ptn(cell,setting['pattern_to_remove']).strip()
 
         items = []
 
