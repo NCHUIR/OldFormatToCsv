@@ -238,6 +238,7 @@ class OldFormatToCsv:
 
             self.writeCsv(self.Meta,des_csv)
             print("Result has been written to:",des_csv)
+            return des_csv
 
         except Exception as e:
             print("\nERROR:")
