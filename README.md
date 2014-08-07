@@ -6,7 +6,7 @@ OldFormatToCsv
 ## Requirement
 
  * Python3
- * xlrd module,use `pip install xlrd` to get xlrd
+ * xlrd module,use `pip3 install xlrd` to get xlrd
 
 ## Usage
 
