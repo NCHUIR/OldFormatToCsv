@@ -7,8 +7,8 @@ class OldFormatToCsv:
 
     setting = {
         "bitstream_filename_regex":[
-            ['dash(-)','.+-(\d+)'],
-            ['pure_digits','(\d+)']
+            ['dash(-)','^.+-(\d+)$'],
+            ['pure_digits','^(\d+)$']
         ], # the second group (1) of regex match result is the priority of bitstream
 
         'xls_ext':['xls','xlsx'],
@@ -59,35 +59,29 @@ class OldFormatToCsv:
     def __init__(self,input_setting = {}):
         self.setting.update(input_setting)
 
+    @staticmethod
     def remove_ptn(str,ptn_to_remove):
         for ptn in ptn_to_remove:
             str = str.replace(ptn,'')
         return str
 
+    @staticmethod
     def parseXls(xls_file):
         wb = open_workbook(xls_file)
-
-        # print('# Xls [{0}] ======='.format(xls_file))
 
         items = []
 
         for s in wb.sheets():
-            # print('# Sheet [{0}] ======='.format(s.name))
-
-            # print('## this sheet has {0} cols and {1} rows.'.format(s.ncols,s.nrows))
             col_name = []
             ncols = range(s.ncols)
 
             for col in ncols:
-                #print("...",s.cell(0,col).value)
                 col_name.append(s.cell(0,col).value)
 
             for row in range(1,s.nrows):
                 item = []
-                # print('### item {0} ======='.format(row))
                 for col in ncols:
                     item.append(s.cell(row,col).value)
-                    # print('[{0}] : [{1}]'.format(col_name[col],s.cell(row,col).value))
                 items.append(item)
         return {'items':items,'col_name':col_name}
 
@@ -95,7 +89,7 @@ class OldFormatToCsv:
         setting = self.setting
 
         if not os.path.isdir(target_path):
-            raise Exception("Not a folder!")
+            raise Exception("%s is not a folder!" % (target_path))
 
         fs = os.listdir(target_path)
         len_of_bs_type = len(setting['bitstream_filename_regex'])
@@ -124,10 +118,11 @@ class OldFormatToCsv:
                         bitstream_filename_regex_index+=1
 
                     bitsteams.append([int(reg_match.group(1)),f])
+                    bitstream_name_format = setting['bitstream_filename_regex'][bitstream_filename_regex_index-1][0]
                 elif bs_reg:
                     reg_match = bs_reg.match(f_name)
                     if not reg_match:
-                        raise Exception("bitstream filename format not the same!")
+                        raise Exception("bitstream filename format doesn't match! Format name:%s, the file that cause this error:%s" % (bitstream_name_format,f))
                     bitsteams.append([int(reg_match.group(1)),f])
                 else:
                     bitsteams.append([bitstream_cnt,f])
@@ -140,8 +135,6 @@ class OldFormatToCsv:
 
         if not xls_file:
             raise Exception("XLS or XLSX file not found!")
-
-        bitstream_name_format = setting['bitstream_filename_regex'][bitstream_filename_regex_index-1][0]
 
         self.xls_file = xls_file
         self.bitsteams = bitsteams
@@ -158,14 +151,11 @@ class OldFormatToCsv:
     def oldMeta2New(self,oldMeta):
         setting = self.setting
 
-        # print("\noldMeta2New operating...\n")
-        # print("\nori col_name:\n",oldMeta['col_name'])
-
         col_name = []
         multiField_k = []
-        multiField_match = [ OldFormatToCsv.remove_ptn(field,setting['xls_col2csv_col_preReplace']) for field in setting['multiField']]
+        multiField_match = [ __class__.remove_ptn(field,setting['xls_col2csv_col_preReplace']) for field in setting['multiField']]
         ignore_k = []
-        ignore_match = [ OldFormatToCsv.remove_ptn(field,setting['xls_col2csv_col_preReplace']) for field in setting['ignored_col']]
+        ignore_match = [ __class__.remove_ptn(field,setting['xls_col2csv_col_preReplace']) for field in setting['ignored_col']]
         k = 0
 
         for col in oldMeta['col_name']:
@@ -174,7 +164,7 @@ class OldFormatToCsv:
             for xls_col2csv_col in setting['xls_col2csv_col']:
                 col_reg_match = re.match(xls_col2csv_col[0],col_name_tmp)
                 if col_reg_match:
-                    col_match_name = OldFormatToCsv.remove_ptn(col_reg_match.group(1),setting['xls_col2csv_col_preReplace'])
+                    col_match_name = __class__.remove_ptn(col_reg_match.group(1),setting['xls_col2csv_col_preReplace'])
                     if col_match_name in ignore_match:
                         ignore_k.append(k)
                         break
@@ -184,18 +174,14 @@ class OldFormatToCsv:
                        multiField_k.append(k)
                     break
             k+=1
-        
-        # print("\nnew col_name:\n",col_name)
-        # print("\nmultiField_k:\n",multiField_k)
-        # print("\nmultiField_match:\n",multiField_match)
 
         def oldDelimiter2New(cell):
             return setting["oldDelimiter2New"][1].join(
-                [OldFormatToCsv.remove_ptn(v,setting['pattern_to_remove']).strip() for v in cell.split(setting["oldDelimiter2New"][0])]
+                [__class__.remove_ptn(v,setting['pattern_to_remove']).strip() for v in cell.split(setting["oldDelimiter2New"][0])]
             )
 
         def cell_cleanup(cell):
-            return OldFormatToCsv.remove_ptn(cell,setting['pattern_to_remove']).strip()
+            return __class__.remove_ptn(cell,setting['pattern_to_remove']).strip()
 
         items = []
 
@@ -203,8 +189,6 @@ class OldFormatToCsv:
             items.append(
                 [oldDelimiter2New(item[i]) if i in multiField_k else cell_cleanup(item[i]) for i in range(len(item)) if i not in ignore_k]
             )
-
-        # print("\nnew_items:\n",items)
 
         newMeta = {'items':items,'col_name':col_name}
 
@@ -219,8 +203,6 @@ class OldFormatToCsv:
         items = meta['items']
         bitstream_name_col = setting['bitstream_name_col']
 
-        # print("\ncol_name:\n",col_name)
-
         if bitstream_name_col in col_name:
             col_k = [ i for i in range(len(col_name)) if bitstream_name_col == col_name[i] ][0]
         else:
@@ -228,11 +210,11 @@ class OldFormatToCsv:
 
         col_name.insert(col_k,bitstream_name_col)
 
+        if len(bitstream) is not len(items):
+            raise Exception("Number of items in metadata (%d) and bitstreams (%d) doesn't match!" % (len(items),len(bitstream)))
+
         for i in range(len(items)):
             items[i].insert(col_k,bitstream[i])
-
-        # print("\ncol_k:",col_k)
-        # print("\nMetaWithBS:\n",meta)
 
         return {'items':items,'col_name':col_name}
 
@@ -248,7 +230,7 @@ class OldFormatToCsv:
         try:
             print("Start to process...")
             self.file_sniff(source_path)
-            self.Meta = OldFormatToCsv.parseXls(os.path.join(source_path,self.xls_file))
+            self.Meta = __class__.parseXls(os.path.join(source_path,self.xls_file))
             self.oldMeta2New(self.Meta)
             self.addBs2Meta(self.Meta,self.bitsteams)
             if not des_csv:
@@ -257,9 +239,9 @@ class OldFormatToCsv:
             self.writeCsv(self.Meta,des_csv)
             print("Result has been written to:",des_csv)
 
-        except e:
-            print("\n\n\tERROR:\n")
-            print("\t\t",e)
+        except Exception as e:
+            print("\nERROR:")
+            print("\t",e)
             return e
         else:
             print("Process Completed!")
