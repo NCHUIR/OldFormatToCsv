@@ -219,7 +219,7 @@ class OldFormatToCsv:
         return {'items':items,'col_name':col_name}
 
     def writeCsv(self,meta,csv_file_name):
-        with open(csv_file_name, 'w') as f:
+        with open(csv_file_name, 'w', encoding='utf8') as f:
             writer = csv.writer(f)
             writer.writerow(meta['col_name'])
             for item in meta['items']:
