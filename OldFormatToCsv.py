@@ -41,7 +41,8 @@ class OldFormatToCsv:
         ],
         'ignored_col':[
             'sys_filename',
-            'sys_replace'
+            'sys_replace',
+            'date:catalogue'
         ],
 
         'pattern_to_remove':['\n'],
@@ -68,21 +69,27 @@ class OldFormatToCsv:
     @staticmethod
     def parseXls(xls_file):
         wb = open_workbook(xls_file)
-
         items = []
-
         for s in wb.sheets():
+            column_ignore = 0
             col_name = []
             ncols = range(s.ncols)
-
             for col in ncols:
+                if s.cell_type(0,col) == 0 :
+                    column_ignore += 1
+                    continue
                 col_name.append(s.cell(0,col).value)
-
             for row in range(1,s.nrows):
                 item = []
-                for col in ncols:
+                count = 0
+                for col in range(column_ignore,s.ncols) :
+                    if s.cell_type(row,col) == 0 :
+                        count += 1
                     item.append(s.cell(row,col).value)
+                if count == s.ncols-column_ignore :
+                    continue
                 items.append(item)
+            break
         return {'items':items,'col_name':col_name}
 
     def file_sniff(self,target_path):
@@ -158,9 +165,10 @@ class OldFormatToCsv:
         ignore_match = [ __class__.remove_ptn(field,setting['xls_col2csv_col_preReplace']) for field in setting['ignored_col']]
         k = 0
 
+
+        # print(oldMeta)
         for col in oldMeta['col_name']:
             col_name_tmp = col.replace(setting['xls_col2csv_col_preReplace'][0],setting['xls_col2csv_col_preReplace'][1])
-
             for xls_col2csv_col in setting['xls_col2csv_col']:
                 col_reg_match = re.match(xls_col2csv_col[0],col_name_tmp)
                 if col_reg_match:
@@ -169,6 +177,8 @@ class OldFormatToCsv:
                         ignore_k.append(k)
                         break
                     col_name_tmp = re.sub(xls_col2csv_col[0],xls_col2csv_col[1],col_name_tmp)
+                    if col_name_tmp == 'dc.sys_hyperlink[zh_TW]' :
+                        col_name_tmp = 'dc.relation.uri'
                     col_name.append(col_name_tmp)
                     if col_match_name in multiField_match:
                        multiField_k.append(k)
